@@ -51,7 +51,7 @@ The heartbeat interfaces are configured as follows:
 ```text
 NODE1 → 10.0.0.11
 NODE2 → 10.0.0.12
-```
+```text
 
 ---
 
