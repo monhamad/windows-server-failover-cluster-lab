@@ -4,33 +4,41 @@
 
 This project documents the design, deployment, configuration and testing of a high-availability infrastructure based on **Windows Server 2022**.
 
-The laboratory environment was implemented using **VMware Workstation** and combines:
+The laboratory environment was implemented using **VMware Workstation**.
 
-- Active Directory Domain Services (AD DS)
-- DNS
-- Windows Server Failover Clustering
-- iSCSI shared storage
-- File Share Witness
-- SMB file server
-- PowerShell administration
-- Manual and automatic failover testing
+The solution is based on two cluster nodes, a shared iSCSI storage server, a domain controller and a template virtual machine.
 
-The main objective is to provide a highly available file server whose services remain accessible when one of the cluster nodes becomes unavailable.
+The main objective is to provide a highly available file service that remains accessible when one of the cluster nodes becomes unavailable.
 
 ---
 
 ## 🏗️ Architecture
 
-The laboratory consists of five virtual machines and two clustered resources.
+The laboratory consists of five virtual machines:
 
-| Server / Resource | Role | IP Address |
+| Virtual Machine | Role | IP Address |
 |---|---|---|
 | `DC01` | Active Directory / DNS | `192.168.10.10` |
 | `NODE1` | Cluster Node | `192.168.10.11` |
 | `NODE2` | Cluster Node | `192.168.10.12` |
 | `STORAGE` | iSCSI Storage Server | `192.168.10.20` |
-| `CLUSTER01` | Failover Cluster | `192.168.10.13` |
-| `FILESERVER` | Clustered File Server | `192.168.10.14` |
+| `WIN2022-TEMPLATE` | Virtual Machine Template | — |
+
+The Failover Cluster is named:
+
+`CLUSTER01`
+
+with the virtual IP address:
+
+`192.168.10.13`
+
+The clustered file server role is named:
+
+`FILESERVER`
+
+with the virtual IP address:
+
+`192.168.10.14`
 
 The Active Directory domain used in the laboratory is:
 
@@ -38,12 +46,12 @@ The Active Directory domain used in the laboratory is:
 
 ### Network Configuration
 
-Two networks are used by the cluster nodes:
+Two main networks are used in the environment:
 
 | Network | Subnet | Purpose |
 |---|---|---|
-| LAN | `192.168.10.0/24` | Management, domain communication and client access |
-| Heartbeat | `10.0.0.0/24` | Cluster communication and node heartbeat |
+| Main Network | `192.168.10.0/24` | Domain, storage and client communication |
+| Heartbeat Network | `10.0.0.0/24` | Communication between cluster nodes |
 
 The heartbeat interfaces are configured as follows:
 
@@ -75,7 +83,7 @@ The heartbeat interfaces are configured as follows:
 
 The cluster is named:
 
-`CLUSTER01.itintegration.local`
+`CLUSTER01`
 
 It contains two nodes:
 
@@ -86,39 +94,74 @@ Both nodes are configured to host the clustered file server role.
 
 ### Shared Storage
 
-The cluster uses an iSCSI shared disk provided by:
+The shared storage is provided by:
 
 `STORAGE`
 
-The shared storage is presented to both cluster nodes and integrated into the Failover Cluster.
+A 30 GB disk was added to STORAGE and prepared as NTFS with the drive letter `E:` and the label `ISCSI`.
 
-The cluster volume is:
+A 20 GB fixed-size iSCSI virtual disk was then created at:
+
+`E:\iscsivirtualdisk\ClusterData.vhdx`
+
+The iSCSI target is named:
+
+`clusterdatatarget`
+
+Access was authorized for both cluster nodes using their respective IQNs.
+
+### Cluster Storage
+
+The shared disk was integrated into the Failover Cluster and appears as:
+
+`Disque de cluster 1`
+
+The volume used by the file server role is:
 
 `FILEDATA`
 
+It is formatted in NTFS and has a capacity of approximately 20 GB.
+
+The volume was assigned the drive letter:
+
+`F:`
+
 ### Quorum
 
-A **File Share Witness** is configured on `DC01`:
+A **File Share Witness** was configured on `DC01`.
+
+The witness share is:
 
 `\\DC01\ClusterWitness`
 
-The witness contributes to quorum management and helps the cluster maintain an appropriate voting configuration.
+The computer account `CLUSTER01$` was granted the required permissions on the witness share.
 
 ### Clustered File Server
 
-A clustered file server role named:
+A general-purpose clustered file server role named:
 
 `FILESERVER`
 
-is configured with the virtual IP address:
+was created in `CLUSTER01`.
+
+The role can run on either:
+
+- `NODE1`
+- `NODE2`
+
+Its virtual IP address is:
 
 `192.168.10.14`
+
+The local data path is:
+
+`F:\Shares\DATA`
 
 The SMB share is:
 
 `\\FILESERVER\DATA`
 
-The share uses the shared `FILEDATA` volume.
+The **Continuous Availability** feature was enabled for the share.
 
 ---
 
@@ -128,69 +171,103 @@ Several tests were performed to verify the operation and availability of the inf
 
 ### Network Tests
 
-- Connectivity between cluster nodes
-- Connectivity with the domain controller
+The following elements were verified:
+
+- Connectivity between the infrastructure components
 - DNS resolution
-- Heartbeat network connectivity
+- Connectivity with the domain controller
+- Resolution of `FILESERVER`
+- Heartbeat communication between `NODE1` and `NODE2`
 
-### Cluster Tests
+The `FILESERVER` name resolved to:
 
-- Cluster validation
-- Cluster node status
-- Cluster network status
-- Cluster storage status
-- Cluster role status
-
-### Storage Tests
-
-- iSCSI target connectivity
-- Shared disk visibility from both nodes
-- Integration of the disk into the cluster
-- Creation and formatting of the `FILEDATA` volume
+`192.168.10.14`
 
 ### SMB Tests
 
-The following share was tested:
+SMB connectivity was tested using:
+
+`Test-NetConnection FILESERVER -Port 445`
+
+The test confirmed that TCP port 445 was accessible.
+
+### Shared Folder Test
+
+The following SMB share was tested:
 
 `\\FILESERVER\DATA`
 
-File creation and access were successfully tested through the clustered file server.
+A test file named:
+
+`TestCluster.txt`
+
+was successfully created and read from the share.
 
 ### Manual Failover
 
-The `FILESERVER` role was manually moved from one node to the other.
+The `FILESERVER` role was manually moved from one cluster node to the other using **Failover Cluster Manager**.
 
-The SMB share remained accessible after the role migration.
+After the migration:
+
+- the role remained operational;
+- the `DATA` share remained accessible;
+- a new file could still be created.
+
+**Result:** Manual failover successful.
 
 ### Automatic Failover
 
-A node hosting the `FILESERVER` role was made unavailable.
+An automatic failover scenario was tested by making `NODE1` unavailable while it was hosting the `FILESERVER` role.
 
-The cluster automatically transferred the role to the remaining node.
+The cluster detected the node failure and automatically moved the `FILESERVER` role to `NODE2`.
 
-The SMB share remained available after the failover.
+The SMB share remained accessible after the failover.
+
+**Result:** Automatic failover successful.
+
+### Data Integrity Verification
+
+After the failover, the data stored in the share remained accessible.
+
+A new file was created after the failover to verify that the file service continued to operate correctly.
+
+**Result:** Data remained accessible before and after failover.
 
 ---
 
 ## 📊 Results
 
-The laboratory successfully demonstrated the following:
+The laboratory successfully demonstrated:
 
-- Two-node Windows Server failover cluster
-- Shared iSCSI storage accessible by both nodes
+- A two-node Windows Server 2022 Failover Cluster
+- Active Directory and DNS integration
+- Shared storage using iSCSI
 - File Share Witness configuration
-- Clustered SMB file server
-- Manual role migration
+- A clustered SMB file server
+- Manual failover
 - Automatic failover
-- Continued access to the shared data after failover
+- Continued access to shared data after failover
 
-The project provides a practical demonstration of high availability using native Windows Server technologies in a virtualized environment.
+The final infrastructure includes:
+
+| Component | Configuration |
+|---|---|
+| Domain | `itintegration.local` |
+| Cluster | `CLUSTER01` |
+| Node 1 | `NODE1` — `192.168.10.11` |
+| Node 2 | `NODE2` — `192.168.10.12` |
+| Storage | `STORAGE` — `192.168.10.20` |
+| Shared Volume | `FILEDATA` — ~20 GB |
+| File Server Role | `FILESERVER` |
+| File Server IP | `192.168.10.14` |
+| SMB Share | `\\FILESERVER\DATA` |
+| Quorum | File Share Witness on `DC01` |
 
 ---
 
 ## 📚 Documentation
 
-The repository contains the technical documentation, architecture diagrams, configuration screenshots, PowerShell scripts and troubleshooting notes.
+The repository contains the technical documentation, architecture diagrams, configuration screenshots, PowerShell scripts and troubleshooting information.
 
 ### Technical Report
 
@@ -204,17 +281,15 @@ Architecture documentation and diagrams are available in:
 
 `architecture/`
 
-`docs/`
-
 ### Screenshots
 
 Configuration and testing screenshots are organized by topic:
 
-`01-domain/`  
-`02-cluster/`  
-`03-iscsi/`  
-`04-fileserver/`  
-`05-tests/`
+- `screenshots/01-domain/`
+- `screenshots/02-cluster/`
+- `screenshots/03-iscsi/`
+- `screenshots/04-fileserver/`
+- `screenshots/05-tests/`
 
 ### PowerShell
 
@@ -244,6 +319,34 @@ This project was carried out to develop practical skills in:
 - PowerShell administration
 - Infrastructure troubleshooting
 - Virtualized laboratory environments
+
+---
+
+## ⚠️ Troubleshooting
+
+Several issues were encountered during the implementation, including:
+
+- WMI error `0x80041014`
+- A validation error related to Hyper-V configuration
+- QFE error `0x8024402C`
+- Initial identification issues with the `STORAGE` server
+- Microsoft iSCSI service initially stopped
+- Initial formatting issue with the cluster-managed disk
+- Requirement to assign the `F:` drive letter to the `FILEDATA` volume
+
+These issues did not prevent the final implementation of the cluster.
+
+Detailed explanations and solutions will be documented in:
+
+`troubleshooting/issues-and-solutions.md`
+
+---
+
+## 🎓 Project Outcome
+
+This laboratory provided practical experience in implementing and administering a Windows Server 2022 high-availability infrastructure.
+
+The final environment successfully demonstrated the operation of a clustered file service using Failover Clustering, shared iSCSI storage, File Share Witness and SMB.
 
 ---
 
