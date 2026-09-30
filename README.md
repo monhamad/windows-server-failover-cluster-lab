@@ -36,7 +36,7 @@ The Active Directory domain used in the laboratory is:
 
 ```text
 itintegration.local
-```text
+```
 Network configuration
 
 Two networks are used by the cluster nodes:
