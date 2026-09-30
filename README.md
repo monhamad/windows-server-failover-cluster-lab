@@ -36,3 +36,12 @@ The Active Directory domain used in the laboratory is:
 
 ```text
 itintegration.local
+Network configuration
+
+Two networks are used by the cluster nodes:
+
+Network	Subnet	Purpose
+LAN	192.168.10.0/24	Management, domain communication and client access
+Heartbeat	10.0.0.0/24	Cluster communication and node heartbeat
+
+The heartbeat interfaces are configured as follows:
