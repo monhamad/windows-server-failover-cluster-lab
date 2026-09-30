@@ -1,4 +1,3 @@
-````markdown
 # Windows Server 2022 Failover Cluster Lab
 
 ## 📌 Overview
@@ -37,7 +36,6 @@ The Active Directory domain used in the laboratory is:
 
 ```text
 itintegration.local
-````
 
 ### Network configuration
 
@@ -294,22 +292,4 @@ GitHub:
 
 `https://github.com/monhamad`
 
-```
-
-### Ensuite
-
-Ne modifie rien d'autre pour le moment.
-
-En bas de la page :
-
-1. Clique sur **Commit changes...**
-2. Garde :
-   **Commit directly to the `main` branch**
-3. Clique sur **Commit changes**
-
-Après le commit, retourne sur la page principale du dépôt.
-
-**Ne t'inquiète pas si certaines sections comme `docs/rapport-technique.pdf` ou les scripts n'existent pas encore** : nous allons les ajouter progressivement.
-
-Quand le README est enregistré, **envoie-moi une capture de la page principale du dépôt**. On vérifiera ensemble le rendu avant de passer à la prochaine étape.
 ```
