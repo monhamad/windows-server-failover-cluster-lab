@@ -60,6 +60,10 @@ The heartbeat interfaces are configured as follows:
 | `NODE1` | `10.0.0.11` |
 | `NODE2` | `10.0.0.12` |
 
+### Architecture Diagram
+
+![Architecture de l'environnement](architecture/architecture.png)
+
 ---
 
 ## 🔧 Technologies
