@@ -187,6 +187,28 @@ The `FILESERVER` name resolved to:
 
 `192.168.10.14`
 
+## 📸 Screenshots
+
+### Failover Cluster
+
+![Cluster01](screenshots/02-cluster/cluster01.png)
+
+### iSCSI Storage
+
+![iSCSI Target](screenshots/03-iscsi/iscsi-target.png)
+
+### Cluster Storage
+
+![Cluster Disk](screenshots/03-iscsi/cluster-disk.png)
+
+### Clustered File Server
+
+![FILESERVER](screenshots/04-fileserver/fileserver-role.png)
+
+### SMB Share
+
+![DATA Share](screenshots/04-fileserver/data-share.png)
+
 ### SMB Tests
 
 SMB connectivity was tested using:
